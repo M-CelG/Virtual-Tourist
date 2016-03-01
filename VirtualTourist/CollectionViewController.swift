@@ -158,10 +158,6 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
     
     func collectionView(collectionView: UICollectionView, didSelectItemAtIndexPath indexPath: NSIndexPath) {
         print("The cell was selected")
-        // Add to the delete index array
-//        deletedIndexPaths.append(indexPath)
-        //Add to the selected index array
-//        selectedIndexPaths.append(indexPath)
         //Remove Photo from Collection
         if let photo = fetchedResultsController.objectAtIndexPath(indexPath) as? Photo {
             sharedContext.deleteObject(photo)
@@ -177,11 +173,14 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
         insertedIndexPaths = [NSIndexPath]()
         deletedIndexPaths = [NSIndexPath]()
         updatedIndexPaths = [NSIndexPath]()
+        
+        print("in controllerWillChangeContent")
     }
     
     func controller(controller: NSFetchedResultsController, didChangeObject anObject: AnyObject, atIndexPath indexPath: NSIndexPath?, forChangeType type: NSFetchedResultsChangeType, newIndexPath: NSIndexPath?) {
         switch type {
             case .Insert:
+                print("Insert Photo is being triggered")
                 insertedIndexPaths.append(newIndexPath!)
             case .Delete:
                 print("Photo is deleted and appended to deleteIndexPath--Index Path\(indexPath)")
@@ -195,8 +194,10 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
     }
     
     func controllerDidChangeContent(controller: NSFetchedResultsController) {
-        // Perform bulk changes in Collection View
+       
+        print("in controllerDidChangeContent. changes.count: \(insertedIndexPaths.count + deletedIndexPaths.count)")
         
+         // Perform bulk changes in Collection View
         collectionView.performBatchUpdates({() in
             for index in self.insertedIndexPaths {
                 self.collectionView.insertItemsAtIndexPaths([index])
@@ -260,7 +261,7 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
         
         for photo in photos{
             sharedContext.deleteObject(photo)
-            CoreDataStackManager.sharedInstance().saveContext()
+//            CoreDataStackManager.sharedInstance().saveContext()
         }
         // Get the Album details for next fetch
         let fetchAlbumRequest = NSFetchRequest(entityName: "PhotoAlbum")
@@ -279,8 +280,6 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
                 print("New Collection Photo Album \(thisAlbum)")
             }
         }
-        
-        
     }
     
     func startOfImageDownload(){
@@ -289,6 +288,9 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
     
     func updateUIPostImageDownload(){
         print("Update the UI Once the Image download is complete")
-        newCollectionButton.enabled = true
+        dispatch_async(dispatch_get_main_queue()) {
+            self.newCollectionButton.enabled = true
+        }
+        
     }
 }

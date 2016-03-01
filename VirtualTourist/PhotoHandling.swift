@@ -84,7 +84,7 @@ class PhotoHandling: NSObject {
             }
             dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)) {
                 NSNotificationCenter.defaultCenter().postNotificationName("StartOfImageDownload", object: self, userInfo: nil)
-                for url in photoURLArray {
+                for (index, url) in photoURLArray.enumerate() {
                     FlickrClient.sharedInstance().taskForImageData(url) {data, error in
 //                        print("Here is each URL\(url)")
                         if error != nil {
@@ -101,15 +101,15 @@ class PhotoHandling: NSObject {
                         }
                         let urlNSURL = NSURL(string: url)!
                         let imageName = urlNSURL.lastPathComponent
-                        let filePath = self.pathToStoreImage(imageName!)
                         ImageCache().storeImage(image, withIdentifier: imageName!)
                         let photo = Photo(url: imageName!, photoAlbum: album, insertIntoManagedObjectContext: self.context)
                         photo.photoAlbum = album
-                        CoreDataStackManager.sharedInstance().saveContext()
-//                        print("File Name in Dispatch_Async \(filePath)")
+                        if index == photoURLArray.count - 1 {
+                            CoreDataStackManager.sharedInstance().saveContext()
+                            NSNotificationCenter.defaultCenter().postNotificationName("EndOfImageDownload", object: self, userInfo: nil)
+                        }
                     }
                 }
-                NSNotificationCenter.defaultCenter().postNotificationName("EndOfImageDownload", object: self, userInfo: nil)
             }
         }
     }

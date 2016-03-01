@@ -73,6 +73,7 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         
         // Save the current state of the map in the NSUser Defaults
         saveMapRegion()
+        // Save changes in context before the view disappears
         
     }
     
