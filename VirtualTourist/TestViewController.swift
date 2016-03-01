@@ -63,6 +63,8 @@ class TestViewController: UIViewController {
                 print(photos[count].localURL)
                 ++count
             } else {
+                context.deleteObject(photos[0])
+                CoreDataStackManager.sharedInstance().saveContext()
                 count = 0
             }
         }

@@ -26,7 +26,7 @@ class PhotoHandling: NSObject {
         let lat = album.associatedPin.lat
         let lon = album.associatedPin.lon
         // Get the current Page
-        let currentPage = album.currentPageNumber
+        var currentPage = 0
         // Which page to fetch
         var pageToFetch:Int = 0
         // Total number of pages
@@ -51,19 +51,23 @@ class PhotoHandling: NSObject {
                     print("Unable to get total photo count for the Album")
                 }
             }
-            // Now get the Page number requested by the PhotoAlbum
-            if firstTime {
+
+        }
+        // Now get the Page number requested by the PhotoAlbum
+        currentPage = album.currentPageNumber
+        if firstTime {
+            pageToFetch = 1
+        } else {
+            pageTotal = Int(album.totalNumberOfPhotos) / Int(FlickrClient.Constants.PER_PAGE)!
+            if Int(album.totalNumberOfPhotos) % 20 != 0 {
+                pageTotal += 1
+            }
+            if currentPage < pageTotal {
+                pageToFetch = currentPage + 1
+                album.currentPageNumber = pageToFetch
+                CoreDataStackManager.sharedInstance().saveContext()
+            } else if currentPage == pageTotal {
                 pageToFetch = 0
-            } else {
-                pageTotal = Int(album.totalNumberOfPhotos) / Int(FlickrClient.Constants.PER_PAGE)!
-                if Int(album.totalNumberOfPhotos) % 20 != 0 {
-                    pageTotal += 1
-                }
-                if currentPage < pageTotal {
-                    pageToFetch = currentPage + 1
-                } else if currentPage == pageTotal {
-                    pageToFetch = 0
-                }
             }
         }
         
@@ -79,9 +83,10 @@ class PhotoHandling: NSObject {
                 return
             }
             dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)) {
-                for (index, url) in photoURLArray.enumerate() {
+                NSNotificationCenter.defaultCenter().postNotificationName("StartOfImageDownload", object: self, userInfo: nil)
+                for url in photoURLArray {
                     FlickrClient.sharedInstance().taskForImageData(url) {data, error in
-                        print("Here is each URL\(url)")
+//                        print("Here is each URL\(url)")
                         if error != nil {
                             print("Unable to get image for this url:\(url)")
                             return
@@ -94,38 +99,22 @@ class PhotoHandling: NSObject {
                             print("Unable to get Image from the Image Data")
                             return
                         }
-
-                        let imageName = "\(album.id)" + "\(index)" + ".jpg"
-                        let filePath = self.pathToStoreImage(imageName)
-                        ImageCache().storeImage(image, withIdentifier: imageName)
-//                        if let imageData = UIImagePNGRepresentation(image) {
-//                            imageData.writeToFile(filePath, atomically: true)
-//                        }
-                        let photo = Photo(url: imageName, photoAlbum: album, insertIntoManagedObjectContext: self.context)
+                        let urlNSURL = NSURL(string: url)!
+                        let imageName = urlNSURL.lastPathComponent
+                        let filePath = self.pathToStoreImage(imageName!)
+                        ImageCache().storeImage(image, withIdentifier: imageName!)
+                        let photo = Photo(url: imageName!, photoAlbum: album, insertIntoManagedObjectContext: self.context)
                         photo.photoAlbum = album
                         CoreDataStackManager.sharedInstance().saveContext()
-                        print("File Name in Dispatch_Async \(filePath)")
-                        
+//                        print("File Name in Dispatch_Async \(filePath)")
                     }
-                    
                 }
+                NSNotificationCenter.defaultCenter().postNotificationName("EndOfImageDownload", object: self, userInfo: nil)
             }
         }
     }
 
-//    // Function to get individual photo
-//    func getIndividualPhoto(url: String, completionHandler: (imageData: NSData?, error: NSError?) -> Void) {
-//        FlickrClient.sharedInstance().taskForImageData(url) {data, error in
-//            if error != nil {
-//                print("Unable to get image for this url:\(url)")
-//                return
-//            }
-//            guard let _ = data else {
-//                print("Invalid Data for Image")
-//                return
-//            }
-//        }
-//    }
+
     
     // This method returns filepath to store file on disk
     func pathToStoreImage(fileName: String) ->String {

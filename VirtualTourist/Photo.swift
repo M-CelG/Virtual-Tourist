@@ -27,4 +27,24 @@ class Photo: NSManagedObject {
         self.photoAlbum = photoAlbum
         name = photoAlbum.name
     }
+    
+    override func prepareForDeletion() {
+        super.prepareForDeletion()
+        print("This Photo item is now Deinitialized")
+        let filePath = pathForIdentifier(localURL)
+        do {
+            try NSFileManager.defaultManager().removeItemAtPath(filePath)
+        } catch {
+            print("Error deleting file from harddisk")
+        }
+    }
+    
+    
+    func pathForIdentifier(identifier: String) -> String {
+        let documentsDirectoryURL: NSURL = NSFileManager.defaultManager().URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask).first!
+        let fullURL = documentsDirectoryURL.URLByAppendingPathComponent(identifier)
+        
+        return fullURL.path!
+    }
+    
 }

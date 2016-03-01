@@ -161,11 +161,11 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         
         print("\(view.annotation!.coordinate)")
 //        fetchAlbumForAnnotation("\(view.annotation!.coordinate.latitude)"+"\(view.annotation!.coordinate.longitude)")
-        let testVC = storyboard?.instantiateViewControllerWithIdentifier("TestViewController") as! TestViewController
+        let collectionVC = storyboard?.instantiateViewControllerWithIdentifier("CollectionViewController") as! CollectionViewController
         
-        testVC.name = "\(view.annotation!.coordinate.latitude)"+"\(view.annotation!.coordinate.longitude)"
-        print(testVC.name)
-        self.navigationController!.pushViewController(testVC, animated: false)
+        collectionVC.name = "\(view.annotation!.coordinate.latitude)"+"\(view.annotation!.coordinate.longitude)"
+        
+        self.navigationController!.pushViewController(collectionVC, animated: false)
     }
     
     // Save MapView region whenever user changes it

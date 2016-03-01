@@ -31,6 +31,6 @@ class PhotoAlbum: NSManagedObject {
         id = pin.id
         associatedPin = pin
         totalNumberOfPhotos = 0
-        currentPageNumber = 0
+        currentPageNumber = 1
     }
 }

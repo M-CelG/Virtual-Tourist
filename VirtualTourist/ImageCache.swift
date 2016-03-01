@@ -28,6 +28,7 @@ class ImageCache {
         }
         
         // Next Try the hard drive
+        print("Trying to open Image: \(fileName)")
         if let image = UIImage(contentsOfFile: path) {
             return image
         }
