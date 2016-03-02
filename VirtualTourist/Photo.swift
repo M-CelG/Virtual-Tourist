@@ -10,20 +10,21 @@ import CoreData
 
 class Photo: NSManagedObject {
     
-    @NSManaged var localURL: String
+    @NSManaged var fileName: String
     @NSManaged var photoAlbum : PhotoAlbum
     @NSManaged var name: String
+    @NSManaged var url: String
     
     override init(entity: NSEntityDescription, insertIntoManagedObjectContext context: NSManagedObjectContext?) {
         super.init(entity: entity, insertIntoManagedObjectContext: context)
     }
     
-    init(url: String, photoAlbum: PhotoAlbum, insertIntoManagedObjectContext context: NSManagedObjectContext) {
+    init(fileName: String, photoAlbum: PhotoAlbum, insertIntoManagedObjectContext context: NSManagedObjectContext) {
         
         let entity = NSEntityDescription.entityForName("Photo", inManagedObjectContext: context)!
         super.init(entity: entity, insertIntoManagedObjectContext: context)
         
-        localURL = url
+        self.fileName = fileName
         self.photoAlbum = photoAlbum
         name = photoAlbum.name
     }
@@ -31,7 +32,7 @@ class Photo: NSManagedObject {
     override func prepareForDeletion() {
         super.prepareForDeletion()
         print("This Photo item is now Deinitialized")
-        let filePath = pathForIdentifier(localURL)
+        let filePath = pathForIdentifier(fileName)
         do {
             try NSFileManager.defaultManager().removeItemAtPath(filePath)
         } catch {

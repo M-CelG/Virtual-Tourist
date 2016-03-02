@@ -21,6 +21,7 @@ class PhotoHandling: NSObject {
     // Shared Context for Core Data
     var context = CoreDataStackManager.sharedInstance().managedObjectContext
     
+    // Function to get Photos of Photo Album all together
     func getPhotosForAlbum(album: PhotoAlbum, firstTime: Bool) {
         // Get coordinates for the associated Pin
         let lat = album.associatedPin.lat
@@ -43,7 +44,7 @@ class PhotoHandling: NSObject {
                 print("Invalid data from Flickr")
                 return
             }
-            dispatch_async(dispatch_get_main_queue()){
+            self.context.performBlockAndWait(){
                 if let number = Int(albumPhotoCount) {
                     album.totalNumberOfPhotos = number
                     CoreDataStackManager.sharedInstance().saveContext()
@@ -64,8 +65,10 @@ class PhotoHandling: NSObject {
             }
             if currentPage < pageTotal {
                 pageToFetch = currentPage + 1
-                album.currentPageNumber = pageToFetch
-                CoreDataStackManager.sharedInstance().saveContext()
+                self.context.performBlock(){
+                    album.currentPageNumber = pageToFetch
+                    CoreDataStackManager.sharedInstance().saveContext()
+                }
             } else if currentPage == pageTotal {
                 pageToFetch = 0
             }
@@ -86,7 +89,6 @@ class PhotoHandling: NSObject {
                 NSNotificationCenter.defaultCenter().postNotificationName("StartOfImageDownload", object: self, userInfo: nil)
                 for (index, url) in photoURLArray.enumerate() {
                     FlickrClient.sharedInstance().taskForImageData(url) {data, error in
-//                        print("Here is each URL\(url)")
                         if error != nil {
                             print("Unable to get image for this url:\(url)")
                             return
@@ -102,10 +104,15 @@ class PhotoHandling: NSObject {
                         let urlNSURL = NSURL(string: url)!
                         let imageName = urlNSURL.lastPathComponent
                         ImageCache().storeImage(image, withIdentifier: imageName!)
-                        let photo = Photo(url: imageName!, photoAlbum: album, insertIntoManagedObjectContext: self.context)
-                        photo.photoAlbum = album
+                        self.context.performBlockAndWait(){
+                            let photo = Photo(fileName: imageName!, photoAlbum: album, insertIntoManagedObjectContext: self.context)
+                            photo.photoAlbum = album
+                            photo.url = url
+                        }
                         if index == photoURLArray.count - 1 {
-                            CoreDataStackManager.sharedInstance().saveContext()
+                            self.context.performBlock() {
+                                CoreDataStackManager.sharedInstance().saveContext()
+                            }
                             NSNotificationCenter.defaultCenter().postNotificationName("EndOfImageDownload", object: self, userInfo: nil)
                         }
                     }
@@ -114,7 +121,90 @@ class PhotoHandling: NSObject {
         }
     }
 
-
+    // The method get details for photos in Album but does not download
+    func getPhotoURLsForAlbum(album: PhotoAlbum, firstTime: Bool) {
+        // Get coordinates for the associated Pin
+        let lat = album.associatedPin.lat
+        let lon = album.associatedPin.lon
+        // Get the current Page
+        var currentPage = 0
+        // Which page to fetch
+        var pageToFetch:Int = 0
+        // Total number of pages
+        var pageTotal = 0
+        
+        
+        // First update total number of photo's in Album
+        FlickrClient.sharedInstance().getFlickrTotalNumberOfPhotosInAlbum(lat, lon: lon, page_number: currentPage) { data, error in
+            if error != nil {
+                print("Unable to get total number of pages in album")
+            }
+            
+            guard let albumPhotoCount = data as? String else {
+                print("Invalid data from Flickr")
+                return
+            }
+            self.context.performBlockAndWait(){
+                if let number = Int(albumPhotoCount) {
+                    album.totalNumberOfPhotos = number
+                    CoreDataStackManager.sharedInstance().saveContext()
+                } else {
+                    print("Unable to get total photo count for the Album")
+                }
+            }
+            
+        }
+        // Now get the Page number requested by the PhotoAlbum
+        currentPage = album.currentPageNumber
+        if firstTime {
+            pageToFetch = 1
+        } else {
+            pageTotal = Int(album.totalNumberOfPhotos) / Int(FlickrClient.Constants.PER_PAGE)!
+            if Int(album.totalNumberOfPhotos) % 20 != 0 {
+                pageTotal += 1
+            }
+            if currentPage < pageTotal {
+                pageToFetch = currentPage + 1
+                self.context.performBlock(){
+                    album.currentPageNumber = pageToFetch
+                    CoreDataStackManager.sharedInstance().saveContext()
+                }
+            } else if currentPage == pageTotal {
+                pageToFetch = 0
+            }
+        }
+        
+        // Now get the URLs, then get Images and store them on local disk
+        FlickrClient.sharedInstance().getFlickrPhotosForAlbum(lat, lon: lon, page_number: pageToFetch) { results, error in
+            if let error = error {
+                print("Houston we have issues:\(error)")
+                return
+            }
+            
+            guard let photoURLArray = results as? [String] else {
+                print("Unable to get the URL Array")
+                return
+            }
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)) {
+                NSNotificationCenter.defaultCenter().postNotificationName("StartOfImageDownload", object: self, userInfo: nil)
+                for (index, url) in photoURLArray.enumerate() {
+                    let urlNSURL = NSURL(string: url)!
+                    let imageName = urlNSURL.lastPathComponent
+                    self.context.performBlockAndWait(){
+                        let photo = Photo(fileName: imageName!, photoAlbum: album, insertIntoManagedObjectContext: self.context)
+                        photo.photoAlbum = album
+                        photo.url = url
+                    }
+                    if index == photoURLArray.count - 1 {
+                        self.context.performBlock() {
+                            CoreDataStackManager.sharedInstance().saveContext()
+                        }
+                        NSNotificationCenter.defaultCenter().postNotificationName("EndOfImageDownload", object: self, userInfo: nil)
+                    }
+                }
+            }
+        }
+    }
     
     // This method returns filepath to store file on disk
     func pathToStoreImage(fileName: String) ->String {

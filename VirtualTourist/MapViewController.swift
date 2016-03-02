@@ -153,12 +153,11 @@ class MapViewController: UIViewController, MKMapViewDelegate {
             pinView!.annotation = annotation
             
         }
-        pinView!.draggable = true
+//        pinView!.draggable = true
         return pinView
     }
 
     func mapView(mapView: MKMapView, didSelectAnnotationView view: MKAnnotationView) {
-
         
         print("\(view.annotation!.coordinate)")
 //        fetchAlbumForAnnotation("\(view.annotation!.coordinate.latitude)"+"\(view.annotation!.coordinate.longitude)")
@@ -168,6 +167,78 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         
         self.navigationController!.pushViewController(collectionVC, animated: false)
     }
+    
+//    func mapView(mapView: MKMapView, annotationView view: MKAnnotationView, didChangeDragState newState: MKAnnotationViewDragState, fromOldState oldState: MKAnnotationViewDragState) {
+//        var originalPinCoordinates: CLLocationCoordinate2D!
+//        var finalPinCoordinates: CLLocationCoordinate2D!
+//        switch oldState {
+//            case .Starting:
+//                if let coordinate = view.annotation?.coordinate {
+//                    originalPinCoordinates = coordinate
+//                    print("Original Coordinate:\(coordinate)")
+//                }
+//            default:
+//                break
+//        }
+//        
+//        switch newState {
+//            case .Ending:
+//                if let coordinate = view.annotation?.coordinate {
+//                    finalPinCoordinates = coordinate
+//                    print("Final Coordinate:\(coordinate)")
+//                }
+//            
+//            default:
+//                break
+//        }
+//        
+//        if originalPinCoordinates.latitude == finalPinCoordinates.latitude && originalPinCoordinates.longitude == finalPinCoordinates.longitude {
+//            print("Do Nothing")
+//        } else {
+//            let oldPinName = "\(originalPinCoordinates.latitude)" + "\(originalPinCoordinates.longitude)"
+//            print("Old Pin Name: \(oldPinName)")
+//            let newPinName = "\(finalPinCoordinates.latitude)" + "\(finalPinCoordinates.longitude)"
+//            print("New Pin Name: \(newPinName)")
+//            let fetchRequest = NSFetchRequest(entityName: "PhotoAlbum")
+//            fetchRequest.predicate = NSPredicate(format: "name == %@", oldPinName)
+//            var oldAlbum = [PhotoAlbum]()
+//            do {
+//                oldAlbum = try context.executeFetchRequest(fetchRequest) as! [PhotoAlbum]
+//            } catch let error as NSError {
+//                print("Error during finding the original Album during Dragging: \(error.userInfo)")
+//            }
+//            if !oldAlbum.isEmpty{
+//                for album in oldAlbum {
+//                    context.deleteObject(album)
+//                }
+//            } else {
+//                print("Unable to find oldAlbum in Core Data")
+//            }
+//            
+//            let fetchPinRequest = NSFetchRequest(entityName: "Pin")
+//            fetchPinRequest.predicate = NSPredicate(format: "name == %@", oldPinName)
+//            var pin = [Pin]()
+//            do {
+//                pin = try context.executeFetchRequest(fetchPinRequest) as! [Pin]
+//            } catch let error as NSError {
+//                print("Error during finding the original Pin during Dragging: \(error.userInfo)")
+//            }
+//            if !pin.isEmpty{
+//                for thisPin in pin {
+//                    thisPin.name = newPinName
+//                    //Create PhotoAlbum for the pin
+//                    let photoAlbum = PhotoAlbum(pin: thisPin, insertIntoManagedObjectContext: context)
+//                    photoAlbum.associatedPin = thisPin
+//                    // Download the photos for the album
+//                    PhotoHandling.sharedInstance().getPhotosForAlbum(photoAlbum, firstTime: true)
+//                }
+//            } else {
+//                print("Unable to find Pin in Core Data")
+//            }
+//            
+//
+//        }
+//    }
     
     // Save MapView region whenever user changes it
     func mapView(mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
@@ -331,6 +402,8 @@ class MapViewController: UIViewController, MKMapViewDelegate {
             mapView.setRegion(savedRegion, animated: animated)
         }
     }
+    
+    
     
 
 }

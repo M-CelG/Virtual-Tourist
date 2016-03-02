@@ -46,7 +46,7 @@ class TestViewController: UIViewController {
     override func viewDidAppear(animated: Bool) {
         super.viewDidAppear(true)
         if !photos.isEmpty {
-            imageView.image = ImageCache().retriveImageWithIdentifier(photos[0].localURL)
+            imageView.image = ImageCache().retriveImageWithIdentifier(photos[0].fileName)
         }
 
     }
@@ -58,9 +58,9 @@ class TestViewController: UIViewController {
         } else {
             print("\(photos.count)")
             if count < photos.count {
-                imageView.image = ImageCache().retriveImageWithIdentifier(photos[count].localURL)
+                imageView.image = ImageCache().retriveImageWithIdentifier(photos[count].fileName)
 //                imageView.image = UIImage(contentsOfFile: photos[count].localURL)
-                print(photos[count].localURL)
+                print(photos[count].fileName)
                 ++count
             } else {
                 context.deleteObject(photos[0])

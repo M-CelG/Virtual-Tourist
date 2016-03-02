@@ -94,25 +94,25 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
         NSNotificationCenter.defaultCenter().removeObserver(self, name: "EndOfImageDownload", object: nil)
     }
     // Create layout for the cells in collection view
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        
-        // Configure the cell layout
-        let cellLayout = UICollectionViewFlowLayout()
-        cellLayout.sectionInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
-        cellLayout.minimumInteritemSpacing = 0.0
-        cellLayout.minimumLineSpacing = 0.0
-        
-        let width = floor(self.collectionView.frame.size.width/2)
-        cellLayout.itemSize = CGSize(width: width, height: width)
-        collectionView.collectionViewLayout = cellLayout
-    }
+//    override func viewDidLayoutSubviews() {
+//        super.viewDidLayoutSubviews()
+//        
+//        // Configure the cell layout
+//        let cellLayout = UICollectionViewFlowLayout()
+//        cellLayout.sectionInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
+//        cellLayout.minimumInteritemSpacing = 0.0
+//        cellLayout.minimumLineSpacing = 0.0
+//        
+//        let width = floor(self.collectionView.frame.size.width/2)
+//        cellLayout.itemSize = CGSize(width: width, height: width)
+//        collectionView.collectionViewLayout = cellLayout
+//    }
     
     // Create Fetched Result Controller
     lazy var fetchedResultsController: NSFetchedResultsController = {
         
         let fetchRequest = NSFetchRequest(entityName: "Photo")
-        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "localURL", ascending: true)]
+        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "fileName", ascending: true)]
         fetchRequest.predicate = NSPredicate(format: "name == %@", self.name)
         
         let fetchedResultsController = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: self.sharedContext, sectionNameKeyPath: nil, cacheName: nil)
@@ -125,15 +125,37 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
     
     func configureCell(cell: PhotoCollectionViewCell, atIndexPath path: NSIndexPath) {
         let photo = fetchedResultsController.objectAtIndexPath(path) as! Photo
-        print("This is photo in CollectionViewCell:\(photo.localURL)")
+        print("This is photo in CollectionViewCell:\(photo.fileName)")
         
-        if ImageCache().retriveImageWithIdentifier(photo.localURL) == nil {
-            cell.imageView.image = UIImage(named: "imagePlaceHoldr")
+        cell.activityIndicator.startAnimating()
+        
+        let filePath = PhotoHandling.sharedInstance().pathToStoreImage(photo.fileName)
+        if NSFileManager.defaultManager().fileExistsAtPath(filePath) {
+            cell.activityIndicator.stopAnimating()
+            cell.imageView.image = ImageCache().retriveImageWithIdentifier(photo.fileName)
         } else {
-            cell.imageView.image = ImageCache().retriveImageWithIdentifier(photo.localURL)
+            cell.imageView.image = UIImage(named: "PlaceHolder")
+            FlickrClient.sharedInstance().taskForImageData(photo.url) {data, error in
+                if error != nil {
+                    print("Unable to download this particular Image: \(photo.url)")
+                    return
+                }
+                
+                if let image = UIImage(data: data!) {
+                    dispatch_async(dispatch_get_main_queue()) {
+                        ImageCache().storeImage(image, withIdentifier: photo.fileName)
+                        // Check if the cell is still in view
+//                        if cell == self.collectionView.cellForItemAtIndexPath(path) {
+                        cell.imageView.image = image
+                        cell.activityIndicator.stopAnimating()
+//                        }
+                    }
+                } else {
+                    print("Unable to get this image as data is invalid: \(photo.url)")
+                }
+                
+            }
         }
-        
-        
     }
     
     // MARK: - Collection View Data Source and Delegates
@@ -255,14 +277,17 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
 //    }
     
     @IBAction func getNewCollection(sender: UIBarButtonItem) {
+        // Disable New Collection Button
         newCollectionButton.enabled = false
+        
         // Get all the photos in the Fetched Results Controller
         let photos = fetchedResultsController.fetchedObjects as! [Photo]
         
+        // Delete all the current photos
         for photo in photos{
             sharedContext.deleteObject(photo)
-//            CoreDataStackManager.sharedInstance().saveContext()
         }
+        
         // Get the Album details for next fetch
         let fetchAlbumRequest = NSFetchRequest(entityName: "PhotoAlbum")
         fetchAlbumRequest.predicate = NSPredicate(format: "name == %@", name)
@@ -276,10 +301,12 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
         }
         if !album.isEmpty {
             for thisAlbum in album{
-                PhotoHandling.sharedInstance().getPhotosForAlbum(thisAlbum, firstTime: false)
+                PhotoHandling.sharedInstance().getPhotoURLsForAlbum(thisAlbum, firstTime: false)
                 print("New Collection Photo Album \(thisAlbum)")
             }
         }
+    
+
     }
     
     func startOfImageDownload(){
