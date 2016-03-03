@@ -12,7 +12,7 @@ class Photo: NSManagedObject {
     
     @NSManaged var fileName: String
     @NSManaged var photoAlbum : PhotoAlbum
-    @NSManaged var name: String
+    @NSManaged var id: String
     @NSManaged var url: String
     
     override init(entity: NSEntityDescription, insertIntoManagedObjectContext context: NSManagedObjectContext?) {
@@ -26,7 +26,7 @@ class Photo: NSManagedObject {
         
         self.fileName = fileName
         self.photoAlbum = photoAlbum
-        name = photoAlbum.name
+        id = photoAlbum.id
     }
     
     override func prepareForDeletion() {

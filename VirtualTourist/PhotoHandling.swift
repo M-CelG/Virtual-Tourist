@@ -24,8 +24,8 @@ class PhotoHandling: NSObject {
     // Function to get Photos of Photo Album all together
     func getPhotosForAlbum(album: PhotoAlbum, firstTime: Bool) {
         // Get coordinates for the associated Pin
-        let lat = album.associatedPin.lat
-        let lon = album.associatedPin.lon
+        let lat = album.associatedPin.lat as Double
+        let lon = album.associatedPin.lon as Double
         // Get the current Page
         var currentPage = 0
         // Which page to fetch
@@ -55,24 +55,24 @@ class PhotoHandling: NSObject {
 
         }
         // Now get the Page number requested by the PhotoAlbum
-        currentPage = album.currentPageNumber
-        if firstTime {
-            pageToFetch = 1
-        } else {
-            pageTotal = Int(album.totalNumberOfPhotos) / Int(FlickrClient.Constants.PER_PAGE)!
-            if Int(album.totalNumberOfPhotos) % 20 != 0 {
-                pageTotal += 1
-            }
-            if currentPage < pageTotal {
-                pageToFetch = currentPage + 1
-                self.context.performBlock(){
-                    album.currentPageNumber = pageToFetch
-                    CoreDataStackManager.sharedInstance().saveContext()
-                }
-            } else if currentPage == pageTotal {
-                pageToFetch = 0
-            }
+        currentPage = Int(album.currentPageNumber)
+//        if firstTime {
+//            pageToFetch = 1
+//        } else {
+        pageTotal = Int(album.totalNumberOfPhotos) / Int(FlickrClient.Constants.PER_PAGE)!
+        if Int(album.totalNumberOfPhotos) % 20 != 0 {
+            pageTotal += 1
         }
+        if currentPage < pageTotal {
+            pageToFetch = currentPage + 1
+            self.context.performBlock(){
+                album.currentPageNumber = pageToFetch
+                CoreDataStackManager.sharedInstance().saveContext()
+            }
+        } else if currentPage == pageTotal {
+            pageToFetch = 0
+        }
+//        }
         
         // Now get the URLs, then get Images and store them on local disk
         FlickrClient.sharedInstance().getFlickrPhotosForAlbum(lat, lon: lon, page_number: pageToFetch) { results, error in
@@ -124,8 +124,8 @@ class PhotoHandling: NSObject {
     // The method get details for photos in Album but does not download
     func getPhotoURLsForAlbum(album: PhotoAlbum, firstTime: Bool) {
         // Get coordinates for the associated Pin
-        let lat = album.associatedPin.lat
-        let lon = album.associatedPin.lon
+        let lat = album.associatedPin.lat as Double
+        let lon = album.associatedPin.lon as Double
         // Get the current Page
         var currentPage = 0
         // Which page to fetch
@@ -155,24 +155,24 @@ class PhotoHandling: NSObject {
             
         }
         // Now get the Page number requested by the PhotoAlbum
-        currentPage = album.currentPageNumber
-        if firstTime {
-            pageToFetch = 1
-        } else {
-            pageTotal = Int(album.totalNumberOfPhotos) / Int(FlickrClient.Constants.PER_PAGE)!
-            if Int(album.totalNumberOfPhotos) % 20 != 0 {
-                pageTotal += 1
-            }
-            if currentPage < pageTotal {
-                pageToFetch = currentPage + 1
-                self.context.performBlock(){
-                    album.currentPageNumber = pageToFetch
-                    CoreDataStackManager.sharedInstance().saveContext()
-                }
-            } else if currentPage == pageTotal {
-                pageToFetch = 0
-            }
+        currentPage = Int(album.currentPageNumber)
+//        if firstTime {
+//            pageToFetch = 1
+//        } else {
+        pageTotal = Int(album.totalNumberOfPhotos) / Int(FlickrClient.Constants.PER_PAGE)!
+        if Int(album.totalNumberOfPhotos) % 20 != 0 {
+            pageTotal += 1
         }
+        if currentPage < pageTotal {
+            pageToFetch = currentPage + 1
+            self.context.performBlock(){
+                album.currentPageNumber = pageToFetch
+                CoreDataStackManager.sharedInstance().saveContext()
+            }
+        } else if currentPage == pageTotal {
+            pageToFetch = 0
+        }
+//        }
         
         // Now get the URLs, then get Images and store them on local disk
         FlickrClient.sharedInstance().getFlickrPhotosForAlbum(lat, lon: lon, page_number: pageToFetch) { results, error in

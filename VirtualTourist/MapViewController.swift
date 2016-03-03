@@ -15,21 +15,19 @@ class MapViewController: UIViewController, MKMapViewDelegate {
     var count = 0
     var session: NSURLSession!
     var annotations = [MKAnnotation]()
-    // Array to store Photo URL Array
-//    var tempPhotoURL = [String]()
-//    var tempImage: UIImage!
-//    var tempTotalPhotos = 0
-//    var tempImageData: NSData!
     // Test Segue Identifier
     let testSegue = "TestSegue"
-    // To store total number of Pins
+    //movement of pin allowed
+    let movementAllowed: CGFloat = 100.00
+    // To store total number of Pin
     var newPinID = 0
     // Current Number of pins
     var currentPinID = 0
     //User Defaults
     let defaults = NSUserDefaults.standardUserDefaults()
+    // To store reference to new Pin
+    var newPin: Pin!
     
-
     
     @IBOutlet weak var mapView: MKMapView!
 
@@ -50,19 +48,27 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         //Get Shared Session
         session = FlickrClient.sharedInstance().session
         
-       //Access Current pin count
-//        if defaults.integerForKey("Total Pins") != 0 {
-//            currentPinsCountInUserDefaults = count
-//        }
+        //Allowable movement of the longPressGesture
+        longPressGesture.allowableMovement = movementAllowed
         
+        // Assign MapView Delegate property to self
         mapView.delegate = self
+        
+        //Restore Map Appearance
+        restoreMapRegion(true)
     }
     
-    override func viewWillAppear(animated: Bool) {
-        super.viewWillAppear(false)
+//    override func viewWillAppear(animated: Bool) {
+//        super.viewWillAppear(false)
+//        
+//        //Retrive the Users last save config for Map View
+//        restoreMapRegion(true)
+//    }
+    
+    override func viewDidAppear(animated: Bool) {
+        super.viewDidAppear(true)
         
-        //Retrive the Users last save config for Map View
-        restoreMapRegion(true)
+        
     }
 
     override func viewWillDisappear(animated: Bool) {
@@ -72,7 +78,7 @@ class MapViewController: UIViewController, MKMapViewDelegate {
 //        defaults.setInteger(currentPinsCountInUserDefaults, forKey: "Total Pins")
         
         // Save the current state of the map in the NSUser Defaults
-        saveMapRegion()
+//        saveMapRegion()
         // Save changes in context before the view disappears
         
     }
@@ -80,34 +86,70 @@ class MapViewController: UIViewController, MKMapViewDelegate {
     // Method to drop and new pin
     
     @IBAction func dropNewPin(sender: UILongPressGestureRecognizer) {
+
         
         if sender.state == UIGestureRecognizerState.Began {
             let coordinate = mapView.convertPoint(sender.locationInView(mapView), toCoordinateFromView: mapView)
-            let annotation = MKPointAnnotation()
-//            let annotation = Point(latitude: coordinate.latitude, longitude: coordinate.longitude)
-            annotation.coordinate = coordinate
-            mapView.addAnnotation(annotation)
-            
-            //Core Data 
-            // Create Pin
-            
             currentPinID = self.defaults.integerForKey("Total Pins")
             print("This is current Pin ID\(currentPinID)")
             newPinID = currentPinID + 1
             print("This is new Pin ID\(newPinID)")
-            let pin = Pin(lat: coordinate.latitude, lon: coordinate.longitude, id: newPinID, context: context)
-            //Create PhotoAlbum for the pin
+            let pin = Pin(lat: coordinate.latitude, lon: coordinate.longitude, id: String(newPinID), context: context)
+            // Create Associated
             let photoAlbum = PhotoAlbum(pin: pin, insertIntoManagedObjectContext: context)
             photoAlbum.associatedPin = pin
-            print("\(coordinate.latitude)"+"\(coordinate.longitude)")
-            // new Pin ID as current Pin ID
-            defaults.setInteger(newPinID, forKey: "Total Pins")
             // Save Pin and PhotoAlbum
             CoreDataStackManager.sharedInstance().saveContext()
+            newPin = pin
+            print("OriginalPin: \(pin.coordinate)")
+            mapView.addAnnotation(pin)
+        }
+        
+        if sender.state == UIGestureRecognizerState.Changed {
+            mapView.removeAnnotation(newPin)
+            newPin.coordinate = mapView.convertPoint(sender.locationInView(mapView), toCoordinateFromView: mapView)
+            print("newPin: \(newPin.coordinate)")
+            mapView.addAnnotation(newPin)
+        }
+        // Delete the create Pin in Began state if Gesture is cancelled
+        if sender.state == UIGestureRecognizerState.Cancelled {
+            let fetchAlbumRequest = NSFetchRequest(entityName: "Pin")
+            fetchAlbumRequest.predicate = NSPredicate(format: "id == %@", String(newPinID))
+            var pins = [Pin]()
+            do {
+                pins = try context.executeFetchRequest(fetchAlbumRequest) as! [Pin]
+            } catch let error as NSError {
+                print("Unable to get pin to delete in Map View:\(error.userInfo)")
+            }
+            
+            if !pins.isEmpty {
+                for pin in pins {
+                    context.deleteObject(pin)
+                }
+            }
+        }
+        
+        if sender.state == UIGestureRecognizerState.Ended {
+            let fetchAlbumRequest = NSFetchRequest(entityName: "PhotoAlbum")
+            fetchAlbumRequest.predicate = NSPredicate(format: "id == %@", String(newPinID))
+            var photoAlbum = [PhotoAlbum]()
+            do {
+                photoAlbum = try context.executeFetchRequest(fetchAlbumRequest) as! [PhotoAlbum]
+            } catch let error as NSError {
+                print("Unable to get Photo Album for this pin in Map View:\(error.userInfo)")
+            }
+            
+            if !photoAlbum.isEmpty {
+                for album in photoAlbum {
+                    PhotoHandling.sharedInstance().getPhotosForAlbum(album, firstTime: true)
+                }
+            }
             // Download the photos for the album
-            PhotoHandling.sharedInstance().getPhotosForAlbum(photoAlbum, firstTime: true)
             
         }
+        
+            defaults.setInteger(newPinID, forKey: "Total Pins")
+   
     }
     
     // Method to retrieve Pin information from Core data and add annotation to Map View
@@ -128,13 +170,8 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         
         // Iterate over the fetched Pins from Core Data to create annotations
         for pin in fetchedPins {
-            // Extract Annotation coordinate from Pin
-//            let annotation = Point(latitude: pin.lat as Double, longitude: pin.lon as Double)
-            let annotation = MKPointAnnotation()
-            let coordinate = CLLocationCoordinate2D(latitude: pin.lat as Double, longitude: pin.lon as Double)
-            annotation.coordinate = coordinate
-            // Append to Annotation Array
-            annotations.append(annotation)
+            // Append to annotation array
+            annotations.append(pin)
         }
         // Add annotations to the map view
         mapView.addAnnotations(annotations)
@@ -158,87 +195,15 @@ class MapViewController: UIViewController, MKMapViewDelegate {
     }
 
     func mapView(mapView: MKMapView, didSelectAnnotationView view: MKAnnotationView) {
-        
-        print("\(view.annotation!.coordinate)")
-//        fetchAlbumForAnnotation("\(view.annotation!.coordinate.latitude)"+"\(view.annotation!.coordinate.longitude)")
+        print("In Map View didSelectAnnotation: \(view.annotation!.coordinate)")
         let collectionVC = storyboard?.instantiateViewControllerWithIdentifier("CollectionViewController") as! CollectionViewController
+        let pin = view.annotation as! Pin
         
-        collectionVC.name = "\(view.annotation!.coordinate.latitude)"+"\(view.annotation!.coordinate.longitude)"
+        collectionVC.id = pin.id
         
         self.navigationController!.pushViewController(collectionVC, animated: false)
     }
     
-//    func mapView(mapView: MKMapView, annotationView view: MKAnnotationView, didChangeDragState newState: MKAnnotationViewDragState, fromOldState oldState: MKAnnotationViewDragState) {
-//        var originalPinCoordinates: CLLocationCoordinate2D!
-//        var finalPinCoordinates: CLLocationCoordinate2D!
-//        switch oldState {
-//            case .Starting:
-//                if let coordinate = view.annotation?.coordinate {
-//                    originalPinCoordinates = coordinate
-//                    print("Original Coordinate:\(coordinate)")
-//                }
-//            default:
-//                break
-//        }
-//        
-//        switch newState {
-//            case .Ending:
-//                if let coordinate = view.annotation?.coordinate {
-//                    finalPinCoordinates = coordinate
-//                    print("Final Coordinate:\(coordinate)")
-//                }
-//            
-//            default:
-//                break
-//        }
-//        
-//        if originalPinCoordinates.latitude == finalPinCoordinates.latitude && originalPinCoordinates.longitude == finalPinCoordinates.longitude {
-//            print("Do Nothing")
-//        } else {
-//            let oldPinName = "\(originalPinCoordinates.latitude)" + "\(originalPinCoordinates.longitude)"
-//            print("Old Pin Name: \(oldPinName)")
-//            let newPinName = "\(finalPinCoordinates.latitude)" + "\(finalPinCoordinates.longitude)"
-//            print("New Pin Name: \(newPinName)")
-//            let fetchRequest = NSFetchRequest(entityName: "PhotoAlbum")
-//            fetchRequest.predicate = NSPredicate(format: "name == %@", oldPinName)
-//            var oldAlbum = [PhotoAlbum]()
-//            do {
-//                oldAlbum = try context.executeFetchRequest(fetchRequest) as! [PhotoAlbum]
-//            } catch let error as NSError {
-//                print("Error during finding the original Album during Dragging: \(error.userInfo)")
-//            }
-//            if !oldAlbum.isEmpty{
-//                for album in oldAlbum {
-//                    context.deleteObject(album)
-//                }
-//            } else {
-//                print("Unable to find oldAlbum in Core Data")
-//            }
-//            
-//            let fetchPinRequest = NSFetchRequest(entityName: "Pin")
-//            fetchPinRequest.predicate = NSPredicate(format: "name == %@", oldPinName)
-//            var pin = [Pin]()
-//            do {
-//                pin = try context.executeFetchRequest(fetchPinRequest) as! [Pin]
-//            } catch let error as NSError {
-//                print("Error during finding the original Pin during Dragging: \(error.userInfo)")
-//            }
-//            if !pin.isEmpty{
-//                for thisPin in pin {
-//                    thisPin.name = newPinName
-//                    //Create PhotoAlbum for the pin
-//                    let photoAlbum = PhotoAlbum(pin: thisPin, insertIntoManagedObjectContext: context)
-//                    photoAlbum.associatedPin = thisPin
-//                    // Download the photos for the album
-//                    PhotoHandling.sharedInstance().getPhotosForAlbum(photoAlbum, firstTime: true)
-//                }
-//            } else {
-//                print("Unable to find Pin in Core Data")
-//            }
-//            
-//
-//        }
-//    }
     
     // Save MapView region whenever user changes it
     func mapView(mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
@@ -246,123 +211,7 @@ class MapViewController: UIViewController, MKMapViewDelegate {
     }
     
 
-//    // Get Image URL array from Flickr for particular lat/lon and page number
-//    func getImageURLFromFlickr(lat: Double, lon: Double, page: Int) {
-//        
-//        FlickrClient.sharedInstance().getFlickrPhotosForAlbum(lat, lon: lon, page_number: page) { [unowned self] results, error in
-//            if let error = error {
-//                print("Houston we have issues:\(error)")
-//                return
-//            }
-//            
-//            guard let photoURLArray = results as? [String] else {
-//                print("Unable to get the URL Array")
-//                return
-//            }
-//            self.tempPhotoURL = photoURLArray
-//            print("Here is picture count:\(photoURLArray.count)")
-//            
-//        }
-//    }
     
-//    // Get the total number of pages in the Album
-//    func getTotalNumberOfPhotosInAlbum(lat: Double, lon: Double, page: Int){
-//        FlickrClient.sharedInstance().getFlickrTotalNumberOfPhotosInAlbum(lat, lon: lon, page_number: page) {[unowned self] data, error in
-//            if error != nil {
-//                print("Unable to get total number of pages in album")
-//            }
-//            
-//            guard let albumPhotoCount = data as? String else {
-//                print("Invalid data from Flickr")
-//                return
-//            }
-//            self.tempTotalPhotos = Int(albumPhotoCount)!
-//            print("total photos in MapViewController:\(self.tempTotalPhotos)")
-//        }
-//    }
-    
-    // Download Images from URL
-//    func downloadImagesFromURL(photoAlbum: PhotoAlbum) {
-//        //Iterate over temp Photo URL Array
-//        
-//        for (index, url) in tempPhotoURL.enumerate() {
-//
-//            FlickrClient.sharedInstance().taskForImageData(url) {[unowned self] data, error in
-//                if error != nil {
-//                    print("Unable to get image for this url:\(url)")
-//                    return
-//                }
-//                guard let newData = data else {
-//                    print("Invalid Data for Image")
-//                    return
-//                }
-//                guard let image = UIImage(data: newData) else {
-//                    print("Unable to get Image from the Image Data")
-//                    return
-//                }
-//                self.tempImage = image
-//                self.tempImageData = newData
-//            }
-//            let imageName = photoAlbum.name + "\(index)"
-//            let filePath = pathToStoreImage(imageName)
-//            tempImageData.writeToFile(filePath, atomically: true)
-//            let photo = Photo(url: filePath, photoAlbum: photoAlbum, insertIntoManagedObjectContext: context)
-//            photo.photoAlbum = photoAlbum
-//            context.insertObject(photo)
-//            CoreDataStackManager.sharedInstance().saveContext()
-//            
-//        }
-//    }
- 
-    
-//    func pathToStoreImage(fileName: String) ->String {
-//        let manager = NSFileManager.defaultManager()
-//        let filePath = manager.URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask).first
-//        guard let url = filePath?.URLByAppendingPathComponent(fileName) else {
-//            print("Unable to provide path to store Image on Disk")
-//            return ""
-//        }
-//        
-//        return url.path!
-//    }
-    
-    //Method to fetch album data
-    func fetchAlbumForAnnotation(name: String) {
-        let fetchRequest = NSFetchRequest(entityName: "PhotoAlbum")
-        print("\(name)")
-        fetchRequest.predicate = NSPredicate(format: "name == %@", name)
-        fetchRequest.returnsObjectsAsFaults = false
-        
-        var albumArray = [PhotoAlbum]()
-        do {
-            albumArray = try context.executeFetchRequest(fetchRequest) as! [PhotoAlbum]
-        } catch let error as NSError {
-            print("Error in get PhotoAlbum: \(error.userInfo)")
-        }
-        if albumArray.isEmpty {
-            print("Unable to fetch PhotoAlbum for the pin")
-        } else {
-            print("\(albumArray)")
-        
-            // Fetch request for Photos
-            
-            let fetchPhoto = NSFetchRequest(entityName: "Photo")
-            fetchPhoto.predicate = NSPredicate(format: "photoAlbum == %@", albumArray[0])
-            fetchPhoto.returnsObjectsAsFaults = false
-            
-            var photoArray = [Photo]()
-            
-            do {
-                photoArray = try context.executeFetchRequest(fetchPhoto) as! [Photo]
-            } catch {
-                print("Unable to fetch photos from the Album")
-            }
-            print("Here is photo Array \(photoArray)")
-        }
-        
-        
-        
-    }
     // Map View Save region functions
     func saveMapRegion() {
         

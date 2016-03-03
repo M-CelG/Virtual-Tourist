@@ -82,7 +82,7 @@
                                 </items>
                             </toolbar>
                             <collectionView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" dataMode="prototypes" translatesAutoresizingMaskIntoConstraints="NO" id="7Z1-fk-6YX">
-                                <rect key="frame" x="15" y="227" width="570" height="329"/>
+                                <rect key="frame" x="5" y="227" width="590" height="329"/>
                                 <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
                                 <collectionViewFlowLayout key="collectionViewLayout" minimumLineSpacing="4" minimumInteritemSpacing="4" id="StW-rB-0tJ">
                                     <size key="itemSize" width="110" height="110"/>
@@ -127,13 +127,13 @@
                         <constraints>
                             <constraint firstItem="RBN-I2-fLP" firstAttribute="leading" secondItem="JVI-zf-kMM" secondAttribute="leadingMargin" constant="-20" id="6Lu-yh-aNX"/>
                             <constraint firstAttribute="trailingMargin" secondItem="RBN-I2-fLP" secondAttribute="trailing" constant="-20" id="Nf3-ut-YUX"/>
-                            <constraint firstItem="7Z1-fk-6YX" firstAttribute="leading" secondItem="JVI-zf-kMM" secondAttribute="leadingMargin" constant="-5" id="V0s-DC-yqd"/>
+                            <constraint firstItem="7Z1-fk-6YX" firstAttribute="leading" secondItem="JVI-zf-kMM" secondAttribute="leadingMargin" constant="-15" id="V0s-DC-yqd"/>
                             <constraint firstItem="nVS-6U-htc" firstAttribute="top" secondItem="AaO-JB-dim" secondAttribute="bottom" id="WZr-cV-yAX"/>
                             <constraint firstItem="7Z1-fk-6YX" firstAttribute="top" secondItem="RBN-I2-fLP" secondAttribute="bottomMargin" id="dEY-xt-LCg"/>
                             <constraint firstItem="AaO-JB-dim" firstAttribute="leading" secondItem="JVI-zf-kMM" secondAttribute="leadingMargin" constant="-20" id="gzE-0n-aIZ"/>
                             <constraint firstAttribute="trailingMargin" secondItem="AaO-JB-dim" secondAttribute="trailing" constant="-20" id="kqU-yf-TnG"/>
                             <constraint firstItem="AaO-JB-dim" firstAttribute="top" secondItem="7Z1-fk-6YX" secondAttribute="bottom" id="osI-fg-JoP"/>
-                            <constraint firstAttribute="trailingMargin" secondItem="7Z1-fk-6YX" secondAttribute="trailing" constant="-5" id="yJp-bQ-SSN"/>
+                            <constraint firstAttribute="trailingMargin" secondItem="7Z1-fk-6YX" secondAttribute="trailing" constant="-15" id="yJp-bQ-SSN"/>
                             <constraint firstItem="RBN-I2-fLP" firstAttribute="top" secondItem="Uva-jN-6jf" secondAttribute="bottom" id="z3t-Qk-cwz"/>
                         </constraints>
                     </view>

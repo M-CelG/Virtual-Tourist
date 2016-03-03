@@ -31,8 +31,8 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
     
     // NSIndexPath array to keep track of Selected Indexes
     var selectedIndexPaths: [NSIndexPath]!
-    // Name will be used to pass Pin information
-    var name: String!
+    // Pin id will be used to pass Pin information
+    var id: String!
     //Shared Core Data Context
     var sharedContext: NSManagedObjectContext {
         return CoreDataStackManager.sharedInstance().managedObjectContext
@@ -69,7 +69,7 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
         
         // Annotate Map
         let annotation = MKPointAnnotation()
-        annotation.coordinate = getCoordinatesForPin(name)
+        annotation.coordinate = getCoordinatesForPin(id)
         mapView.addAnnotation(annotation)
         let region = MKCoordinateRegionMakeWithDistance(annotation.coordinate, ZoomLevel().latitudeInMeters, ZoomLevel().longitudeInMeters)
         mapView.setRegion(region, animated: true)
@@ -93,27 +93,28 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
         NSNotificationCenter.defaultCenter().removeObserver(self, name: "StartOfImageDownload", object: nil)
         NSNotificationCenter.defaultCenter().removeObserver(self, name: "EndOfImageDownload", object: nil)
     }
+    
     // Create layout for the cells in collection view
-//    override func viewDidLayoutSubviews() {
-//        super.viewDidLayoutSubviews()
-//        
-//        // Configure the cell layout
-//        let cellLayout = UICollectionViewFlowLayout()
-//        cellLayout.sectionInset = UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
-//        cellLayout.minimumInteritemSpacing = 0.0
-//        cellLayout.minimumLineSpacing = 0.0
-//        
-//        let width = floor(self.collectionView.frame.size.width/2)
-//        cellLayout.itemSize = CGSize(width: width, height: width)
-//        collectionView.collectionViewLayout = cellLayout
-//    }
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        
+        // Configure the cell layout
+        let cellLayout = UICollectionViewFlowLayout()
+        cellLayout.sectionInset = UIEdgeInsets(top: 3, left: 3, bottom: 3, right: 3)
+        cellLayout.minimumInteritemSpacing = 3.0
+        cellLayout.minimumLineSpacing = 3.0
+        
+        let width = floor((self.collectionView.frame.size.width/3) - 4)
+        cellLayout.itemSize = CGSize(width: width, height: width)
+        collectionView.collectionViewLayout = cellLayout
+    }
     
     // Create Fetched Result Controller
     lazy var fetchedResultsController: NSFetchedResultsController = {
         
         let fetchRequest = NSFetchRequest(entityName: "Photo")
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "fileName", ascending: true)]
-        fetchRequest.predicate = NSPredicate(format: "name == %@", self.name)
+        fetchRequest.predicate = NSPredicate(format: "id == %@", self.id)
         
         let fetchedResultsController = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: self.sharedContext, sectionNameKeyPath: nil, cacheName: nil)
 
@@ -235,9 +236,9 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
     }
     
     // MARK: - Get pin Data for map view
-    func getCoordinatesForPin(name: String) -> CLLocationCoordinate2D {
+    func getCoordinatesForPin(id: String) -> CLLocationCoordinate2D {
         let fetchRequest = NSFetchRequest(entityName: "Pin")
-        fetchRequest.predicate = NSPredicate(format: "name == %@", self.name)
+        fetchRequest.predicate = NSPredicate(format: "id == %@", self.id)
         
         var fetchedPin = [Pin]()
         
@@ -251,8 +252,17 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
             
         }
         
-        let coordinate = CLLocationCoordinate2D(latitude: fetchedPin[0].lat as Double , longitude: fetchedPin[0].lon as Double)
-        return coordinate
+        if !fetchedPin.isEmpty {
+            for pin in fetchedPin {
+                let coordinate = CLLocationCoordinate2D(latitude: pin.lat as Double , longitude: pin.lon as Double)
+                return coordinate
+            }
+        } else {
+            print("Unable to get coordinates for the pin. Returning centre of US")
+            
+        }
+
+        return CLLocationCoordinate2DMake(44.58, 103.46)
     }
     
     // Constraint for map view so that its height changes with screen size
@@ -290,7 +300,7 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
         
         // Get the Album details for next fetch
         let fetchAlbumRequest = NSFetchRequest(entityName: "PhotoAlbum")
-        fetchAlbumRequest.predicate = NSPredicate(format: "name == %@", name)
+        fetchAlbumRequest.predicate = NSPredicate(format: "id == %@", id)
         var album = [PhotoAlbum]()
         
         do {

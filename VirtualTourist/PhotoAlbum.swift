@@ -11,12 +11,12 @@ import CoreData
 
 class PhotoAlbum: NSManagedObject {
     
-    @NSManaged var id: Int
+    @NSManaged var id: String
     @NSManaged var photos: [Photo]
     @NSManaged var associatedPin: Pin
-    @NSManaged var totalNumberOfPhotos: Int
-    @NSManaged var currentPageNumber: Int
-    @NSManaged var name: String
+    @NSManaged var totalNumberOfPhotos: NSNumber
+    @NSManaged var currentPageNumber: NSNumber
+//    @NSManaged var name: String
     
     override init(entity: NSEntityDescription, insertIntoManagedObjectContext context: NSManagedObjectContext?) {
         super.init(entity: entity, insertIntoManagedObjectContext: context)
@@ -27,7 +27,7 @@ class PhotoAlbum: NSManagedObject {
         let entity = NSEntityDescription.entityForName("PhotoAlbum", inManagedObjectContext: context)!
         super.init(entity: entity, insertIntoManagedObjectContext: context)
         
-        name = pin.name
+//        name = pin.name
         id = pin.id
         associatedPin = pin
         totalNumberOfPhotos = 0
