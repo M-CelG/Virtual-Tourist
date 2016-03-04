@@ -116,7 +116,7 @@ class MapViewController: UIViewController, MKMapViewDelegate {
             if !photoAlbum.isEmpty {
                 for album in photoAlbum {
                     if !Reachability.isConnectedToNetwork() {
-                        PhotoHandling.alertUser(self, title: "Internet Connection", errorMsg: "Unable To Connect to Internet to download Images", actionText: "Retry")
+                        PhotoHandling.alertUser(self, title: "Wifi Internet Connection", errorMsg: "Not on WiFi connection to Internet", actionText: "Ok")
                     
                     } else {
                         PhotoHandling.sharedInstance().getPhotosForAlbum(album, firstTime: true){error in
@@ -180,8 +180,13 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         let collectionVC = storyboard?.instantiateViewControllerWithIdentifier("CollectionViewController") as! CollectionViewController
         let pin = view.annotation as! Pin
         
+        // Pass along the Pin id so that associated album can be pulled
         collectionVC.id = pin.id
         
+        // Deselect the pin so that it can be selected again on return
+        mapView.deselectAnnotation(pin, animated: false)
+        
+        // Present the Collection View Controller
         self.navigationController!.pushViewController(collectionVC, animated: false)
     }
 
