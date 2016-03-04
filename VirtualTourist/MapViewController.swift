@@ -58,42 +58,14 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         restoreMapRegion(true)
     }
     
-//    override func viewWillAppear(animated: Bool) {
-//        super.viewWillAppear(false)
-//        
-//        //Retrive the Users last save config for Map View
-//        restoreMapRegion(true)
-//    }
-    
-    override func viewDidAppear(animated: Bool) {
-        super.viewDidAppear(true)
-        
-        
-    }
-
-    override func viewWillDisappear(animated: Bool) {
-        super.viewWillDisappear(false)
-        
-        // Save the current Pin count in User Defaults
-//        defaults.setInteger(currentPinsCountInUserDefaults, forKey: "Total Pins")
-        
-        // Save the current state of the map in the NSUser Defaults
-//        saveMapRegion()
-        // Save changes in context before the view disappears
-        
-    }
-    
-    // Method to drop and new pin
-    
+    // MARK: Method to drop a new pin and drag while finger is not lifted
     @IBAction func dropNewPin(sender: UILongPressGestureRecognizer) {
-
         
+        // Create the Pin and add as annotation to the Map
         if sender.state == UIGestureRecognizerState.Began {
             let coordinate = mapView.convertPoint(sender.locationInView(mapView), toCoordinateFromView: mapView)
             currentPinID = self.defaults.integerForKey("Total Pins")
-            print("This is current Pin ID\(currentPinID)")
             newPinID = currentPinID + 1
-            print("This is new Pin ID\(newPinID)")
             let pin = Pin(lat: coordinate.latitude, lon: coordinate.longitude, id: String(newPinID), context: context)
             // Create Associated
             let photoAlbum = PhotoAlbum(pin: pin, insertIntoManagedObjectContext: context)
@@ -101,17 +73,17 @@ class MapViewController: UIViewController, MKMapViewDelegate {
             // Save Pin and PhotoAlbum
             CoreDataStackManager.sharedInstance().saveContext()
             newPin = pin
-            print("OriginalPin: \(pin.coordinate)")
             mapView.addAnnotation(pin)
         }
         
+        // Change the coordinates of the pin if user want to move the pin
         if sender.state == UIGestureRecognizerState.Changed {
             mapView.removeAnnotation(newPin)
             newPin.coordinate = mapView.convertPoint(sender.locationInView(mapView), toCoordinateFromView: mapView)
-            print("newPin: \(newPin.coordinate)")
             mapView.addAnnotation(newPin)
         }
-        // Delete the create Pin in Began state if Gesture is cancelled
+        
+        // Delete the Pin created in Began state if Gesture is cancelled
         if sender.state == UIGestureRecognizerState.Cancelled {
             let fetchAlbumRequest = NSFetchRequest(entityName: "Pin")
             fetchAlbumRequest.predicate = NSPredicate(format: "id == %@", String(newPinID))
@@ -129,6 +101,7 @@ class MapViewController: UIViewController, MKMapViewDelegate {
             }
         }
         
+        // After the User drops the pin, create Album and fetch first lot for the album
         if sender.state == UIGestureRecognizerState.Ended {
             let fetchAlbumRequest = NSFetchRequest(entityName: "PhotoAlbum")
             fetchAlbumRequest.predicate = NSPredicate(format: "id == %@", String(newPinID))
@@ -137,19 +110,28 @@ class MapViewController: UIViewController, MKMapViewDelegate {
                 photoAlbum = try context.executeFetchRequest(fetchAlbumRequest) as! [PhotoAlbum]
             } catch let error as NSError {
                 print("Unable to get Photo Album for this pin in Map View:\(error.userInfo)")
+                PhotoHandling.alertUser(self, title: "Photo Album", errorMsg: "Unable to Get Photo Album", actionText: "Exit App")
             }
             
             if !photoAlbum.isEmpty {
                 for album in photoAlbum {
-                    PhotoHandling.sharedInstance().getPhotosForAlbum(album, firstTime: true)
+                    if !Reachability.isConnectedToNetwork() {
+                        PhotoHandling.alertUser(self, title: "Internet Connection", errorMsg: "Unable To Connect to Internet to download Images", actionText: "Retry")
+                    
+                    } else {
+                        PhotoHandling.sharedInstance().getPhotosForAlbum(album, firstTime: true){error in
+                            if error != nil {
+                                dispatch_async(dispatch_get_main_queue()){
+                                    PhotoHandling.alertUser(self, title: "Photos for Album", errorMsg: "Unable to Download Photos", actionText: "Ok")
+                                }
+                            }
+                        }
+                    }
                 }
             }
-            // Download the photos for the album
-            
         }
-        
-            defaults.setInteger(newPinID, forKey: "Total Pins")
-   
+        // Save the latest pin ID in User defaults
+        defaults.setInteger(newPinID, forKey: "Total Pins")
     }
     
     // Method to retrieve Pin information from Core data and add annotation to Map View
@@ -165,7 +147,7 @@ class MapViewController: UIViewController, MKMapViewDelegate {
             
         } catch let error as NSError {
             print("Error during fetch operation:\(error.userInfo)")
-            // Alert User
+            PhotoHandling.alertUser(self, title: "Pins", errorMsg: "Unable to get existing Locations", actionText: "Ok")
         }
         
         // Iterate over the fetched Pins from Core Data to create annotations
@@ -190,12 +172,11 @@ class MapViewController: UIViewController, MKMapViewDelegate {
             pinView!.annotation = annotation
             
         }
-//        pinView!.draggable = true
+        // Return view for the Pin
         return pinView
     }
 
     func mapView(mapView: MKMapView, didSelectAnnotationView view: MKAnnotationView) {
-        print("In Map View didSelectAnnotation: \(view.annotation!.coordinate)")
         let collectionVC = storyboard?.instantiateViewControllerWithIdentifier("CollectionViewController") as! CollectionViewController
         let pin = view.annotation as! Pin
         
@@ -203,21 +184,17 @@ class MapViewController: UIViewController, MKMapViewDelegate {
         
         self.navigationController!.pushViewController(collectionVC, animated: false)
     }
-    
+
     
     // Save MapView region whenever user changes it
     func mapView(mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
         saveMapRegion()
     }
     
-
+    // MARK: Methods to save and retrive Map Region
     
     // Map View Save region functions
     func saveMapRegion() {
-        
-        // Place the "center" and "span" of the map into a dictionary
-        // The "span" is the width and height of the map in degrees.
-        // It represents the zoom level of the map.
         
         let dictionary = [
             "latitude" : mapView.region.center.latitude,
@@ -226,13 +203,13 @@ class MapViewController: UIViewController, MKMapViewDelegate {
             "longitudeDelta" : mapView.region.span.longitudeDelta
         ]
         
-        // Archive the dictionary into the filePath
+        // Save dictionary in User Defaults
         defaults.setObject(dictionary, forKey: "MapViewRegion")
     }
     
     func restoreMapRegion(animated: Bool) {
         
-        // if we can unarchive a dictionary, we will use it to set the map back to its
+        // if we can get dictionary from User Defaults, we will use it to set the map back to its
         // previous center and span
         if let regionDictionary = defaults.objectForKey("MapViewRegion") {
             
@@ -245,8 +222,6 @@ class MapViewController: UIViewController, MKMapViewDelegate {
             let span = MKCoordinateSpan(latitudeDelta: latitudeDelta, longitudeDelta: longitudeDelta)
             
             let savedRegion = MKCoordinateRegion(center: center, span: span)
-            
-            print("lat: \(latitude), lon: \(longitude), latD: \(latitudeDelta), lonD: \(longitudeDelta)")
             
             mapView.setRegion(savedRegion, animated: animated)
         }

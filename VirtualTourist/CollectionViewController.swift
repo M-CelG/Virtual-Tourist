@@ -38,8 +38,6 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
         return CoreDataStackManager.sharedInstance().managedObjectContext
     }
     
-    /* REMOVE: For test purposes only*/
-//    var photos = [Photo]()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -79,12 +77,6 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
         NSNotificationCenter.defaultCenter().addObserver(self, selector: "updateUIPostImageDownload", name: "EndOfImageDownload", object: nil)
     }
     
-    override func viewWillAppear(animated: Bool) {
-        super.viewWillAppear(true)
-    
-        /* For Test Purpose ONLY Remove*/
-//        fetchPhotoAlbum(self.name)
-    }
     
     override func viewWillDisappear(animated: Bool) {
         super.viewWillDisappear(true)
@@ -126,7 +118,6 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
     
     func configureCell(cell: PhotoCollectionViewCell, atIndexPath path: NSIndexPath) {
         let photo = fetchedResultsController.objectAtIndexPath(path) as! Photo
-        print("This is photo in CollectionViewCell:\(photo.fileName)")
         
         cell.activityIndicator.startAnimating()
         
@@ -145,11 +136,8 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
                 if let image = UIImage(data: data!) {
                     dispatch_async(dispatch_get_main_queue()) {
                         ImageCache().storeImage(image, withIdentifier: photo.fileName)
-                        // Check if the cell is still in view
-//                        if cell == self.collectionView.cellForItemAtIndexPath(path) {
                         cell.imageView.image = image
                         cell.activityIndicator.stopAnimating()
-//                        }
                     }
                 } else {
                     print("Unable to get this image as data is invalid: \(photo.url)")
@@ -166,7 +154,6 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
     }
     
     func collectionView(collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        print("Total number of cells:\(fetchedResultsController.sections![section].numberOfObjects)")
         return fetchedResultsController.sections![section].numberOfObjects
         
     }
@@ -196,20 +183,15 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
         insertedIndexPaths = [NSIndexPath]()
         deletedIndexPaths = [NSIndexPath]()
         updatedIndexPaths = [NSIndexPath]()
-        
-        print("in controllerWillChangeContent")
     }
     
     func controller(controller: NSFetchedResultsController, didChangeObject anObject: AnyObject, atIndexPath indexPath: NSIndexPath?, forChangeType type: NSFetchedResultsChangeType, newIndexPath: NSIndexPath?) {
         switch type {
             case .Insert:
-                print("Insert Photo is being triggered")
                 insertedIndexPaths.append(newIndexPath!)
             case .Delete:
-                print("Photo is deleted and appended to deleteIndexPath--Index Path\(indexPath)")
                 deletedIndexPaths.append(indexPath!)
             case .Update:
-                print("Updates are signaled here")
                 updatedIndexPaths.append(indexPath!)
             default:
                 break
@@ -217,8 +199,6 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
     }
     
     func controllerDidChangeContent(controller: NSFetchedResultsController) {
-       
-        print("in controllerDidChangeContent. changes.count: \(insertedIndexPaths.count + deletedIndexPaths.count)")
         
          // Perform bulk changes in Collection View
         collectionView.performBatchUpdates({() in
@@ -270,21 +250,6 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
         let heightConstraint = NSLayoutConstraint(item: mapView, attribute: .Height, relatedBy: .Equal, toItem: self.view, attribute: .Height, multiplier: 0.25, constant: 0)
         self.view.addConstraint(heightConstraint)
     }
-
-//    /* This is just a test function...REMOVE IT*/
-//    func fetchPhotoAlbum(name: String) {
-//        let fetchPhotosRequest = NSFetchRequest(entityName: "Photo")
-//        fetchPhotosRequest.predicate = NSPredicate(format: "name == %@", name)
-//        fetchPhotosRequest.returnsObjectsAsFaults = false
-//        
-//        do {
-//            photos = try sharedContext.executeFetchRequest(fetchPhotosRequest) as! [Photo]
-//        } catch {
-//            print("Did not get Photos")
-//        }
-//        print(photos)
-//        print("Got Photo")
-//    }
     
     @IBAction func getNewCollection(sender: UIBarButtonItem) {
         // Disable New Collection Button
@@ -307,27 +272,37 @@ class CollectionViewController: UIViewController, NSFetchedResultsControllerDele
             album = try sharedContext.executeFetchRequest(fetchAlbumRequest) as! [PhotoAlbum]
         } catch let error as NSError {
             print("Unable to get Album ID for new collection: \(error.userInfo)")
-            /* ADD USER ALERT */
+            PhotoHandling.alertUser(self, title: "New Collection", errorMsg: "Unable to find Photo Album", actionText: "Retry")
+            newCollectionButton.enabled = true
         }
         if !album.isEmpty {
             for thisAlbum in album{
-                PhotoHandling.sharedInstance().getPhotoURLsForAlbum(thisAlbum, firstTime: false)
-                print("New Collection Photo Album \(thisAlbum)")
+                PhotoHandling.sharedInstance().getPhotoURLsForAlbum(thisAlbum, firstTime: false) {error in
+                    if error != nil {
+                        dispatch_async(dispatch_get_main_queue()){
+                            PhotoHandling.alertUser(self, title: "New Collection", errorMsg: "Unable to Download Photos", actionText: "Retry")
+                            self.newCollectionButton.enabled = true
+                        }
+                    }
+                }
             }
         }
-    
-
     }
     
+    // Function is called when new collection download starts
     func startOfImageDownload(){
-        print("Images have started to download")
+        dispatch_async(dispatch_get_main_queue()) {
+            if self.newCollectionButton.enabled == true {
+                self.newCollectionButton.enabled = false
+            }
+        
+        }
     }
     
+    // Function is called with new collection download is finished
     func updateUIPostImageDownload(){
-        print("Update the UI Once the Image download is complete")
         dispatch_async(dispatch_get_main_queue()) {
             self.newCollectionButton.enabled = true
         }
-        
     }
 }

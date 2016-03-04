@@ -22,7 +22,7 @@ class PhotoHandling: NSObject {
     var context = CoreDataStackManager.sharedInstance().managedObjectContext
     
     // Function to get Photos of Photo Album all together
-    func getPhotosForAlbum(album: PhotoAlbum, firstTime: Bool) {
+    func getPhotosForAlbum(album: PhotoAlbum, firstTime: Bool, completionHandler: (NSError? -> Void)) {
         // Get coordinates for the associated Pin
         let lat = album.associatedPin.lat as Double
         let lon = album.associatedPin.lon as Double
@@ -40,25 +40,22 @@ class PhotoHandling: NSObject {
                 print("Unable to get total number of pages in album")
             }
             
-            guard let albumPhotoCount = data as? String else {
-                print("Invalid data from Flickr")
-                return
-            }
-            self.context.performBlockAndWait(){
-                if let number = Int(albumPhotoCount) {
-                    album.totalNumberOfPhotos = number
-                    CoreDataStackManager.sharedInstance().saveContext()
-                } else {
-                    print("Unable to get total photo count for the Album")
+            if let albumPhotoCount = data as? String {
+                self.context.performBlockAndWait(){
+                    if let number = Int(albumPhotoCount) {
+                        album.totalNumberOfPhotos = number
+                        CoreDataStackManager.sharedInstance().saveContext()
+                    } else {
+                        print("Unable to get total photo count for the Album")
+                    }
                 }
+                
+            } else {
+                print("Invalid data from Flickr")
             }
-
         }
         // Now get the Page number requested by the PhotoAlbum
         currentPage = Int(album.currentPageNumber)
-//        if firstTime {
-//            pageToFetch = 1
-//        } else {
         pageTotal = Int(album.totalNumberOfPhotos) / Int(FlickrClient.Constants.PER_PAGE)!
         if Int(album.totalNumberOfPhotos) % 20 != 0 {
             pageTotal += 1
@@ -72,17 +69,18 @@ class PhotoHandling: NSObject {
         } else if currentPage == pageTotal {
             pageToFetch = 0
         }
-//        }
         
         // Now get the URLs, then get Images and store them on local disk
         FlickrClient.sharedInstance().getFlickrPhotosForAlbum(lat, lon: lon, page_number: pageToFetch) { results, error in
             if let error = error {
                 print("Houston we have issues:\(error)")
+                completionHandler(error)
                 return
             }
             
             guard let photoURLArray = results as? [String] else {
                 print("Unable to get the URL Array")
+                completionHandler(error)
                 return
             }
             dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)) {
@@ -122,7 +120,7 @@ class PhotoHandling: NSObject {
     }
 
     // The method get details for photos in Album but does not download
-    func getPhotoURLsForAlbum(album: PhotoAlbum, firstTime: Bool) {
+    func getPhotoURLsForAlbum(album: PhotoAlbum, firstTime: Bool, completionHandler: (NSError? -> Void)) {
         // Get coordinates for the associated Pin
         let lat = album.associatedPin.lat as Double
         let lon = album.associatedPin.lon as Double
@@ -140,25 +138,22 @@ class PhotoHandling: NSObject {
                 print("Unable to get total number of pages in album")
             }
             
-            guard let albumPhotoCount = data as? String else {
-                print("Invalid data from Flickr")
-                return
-            }
-            self.context.performBlockAndWait(){
-                if let number = Int(albumPhotoCount) {
-                    album.totalNumberOfPhotos = number
-                    CoreDataStackManager.sharedInstance().saveContext()
-                } else {
-                    print("Unable to get total photo count for the Album")
+            if let albumPhotoCount = data as? String {
+                self.context.performBlockAndWait(){
+                    if let number = Int(albumPhotoCount) {
+                        album.totalNumberOfPhotos = number
+                        CoreDataStackManager.sharedInstance().saveContext()
+                    } else {
+                        print("Unable to get total photo count for the Album")
+                    }
                 }
+            } else {
+                print("Invalid data from Flickr")
             }
-            
         }
+        
         // Now get the Page number requested by the PhotoAlbum
         currentPage = Int(album.currentPageNumber)
-//        if firstTime {
-//            pageToFetch = 1
-//        } else {
         pageTotal = Int(album.totalNumberOfPhotos) / Int(FlickrClient.Constants.PER_PAGE)!
         if Int(album.totalNumberOfPhotos) % 20 != 0 {
             pageTotal += 1
@@ -172,17 +167,19 @@ class PhotoHandling: NSObject {
         } else if currentPage == pageTotal {
             pageToFetch = 0
         }
-//        }
+
         
         // Now get the URLs, then get Images and store them on local disk
         FlickrClient.sharedInstance().getFlickrPhotosForAlbum(lat, lon: lon, page_number: pageToFetch) { results, error in
             if let error = error {
                 print("Houston we have issues:\(error)")
+                completionHandler(error)
                 return
             }
             
             guard let photoURLArray = results as? [String] else {
                 print("Unable to get the URL Array")
+                completionHandler(error)
                 return
             }
             dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)) {
@@ -216,6 +213,14 @@ class PhotoHandling: NSObject {
         }
         
         return url.path!
+    }
+    
+    // MARK: Class func to present User Alerts
+    class func alertUser(controller: UIViewController, title: String, errorMsg: String, actionText: String) {
+        let alertController = UIAlertController(title: title, message: errorMsg, preferredStyle: .Alert)
+        let alertAction = UIAlertAction(title: actionText, style: .Cancel, handler: nil)
+        alertController.addAction(alertAction)
+        controller.presentViewController(alertController, animated: true, completion: nil)
     }
     
     // Mark: Single Instance

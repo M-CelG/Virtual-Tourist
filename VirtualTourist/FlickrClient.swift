@@ -25,7 +25,6 @@ class FlickrClient: NSObject {
         let url = Constants.BASE_URL + FlickrClient.escapeParameters(parameters)
         
         let urlNSURL = NSURL(string: url)
-        print(url)
         let request = NSURLRequest(URL: urlNSURL!)
         
         let task = session.dataTaskWithRequest(request) {data, response, error in

@@ -56,12 +56,11 @@ extension FlickrClient {
             }
             
             // Get the the total number of photos in the Album
-            guard let totalPhotosInAlbum = flickrPageDict[FlickrClient.JsonKeys.Total] as? String else {
+            guard let _ = flickrPageDict[FlickrClient.JsonKeys.Total] as? String else {
                 print("Unable to find number of pages of photo's returned")
                 completionHandler(results: nil, error: NSError(domain: "Getting total number of pages of Photos", code: 4, userInfo: [NSLocalizedDescriptionKey:"Unable to get total number of pages"]))
                 return
             }
-            print("TotalPictures are: \(totalPhotosInAlbum)")
             
             // Get Photo Dictionary
             guard let photosDict = flickrPageDict[FlickrClient.JsonKeys.PhotosDictInData] as? [[String: AnyObject]] else {
@@ -69,7 +68,6 @@ extension FlickrClient {
                 completionHandler(results: nil, error: NSError(domain: "Unable to extract photos Dict from downloaded Page", code: 5, userInfo: [NSLocalizedDescriptionKey: "Unable to extract photo Dict"]))
                 return
             }
-            print(photosDict.count)
             
 
             // Array to store URL of the photos in the page
@@ -80,7 +78,6 @@ extension FlickrClient {
                     photoURLs.append(photoURL)
                 }
             }
-            print(photoURLs.count)
             completionHandler(results: photoURLs, error: nil)
         }
     }
@@ -134,7 +131,6 @@ extension FlickrClient {
                 completionHandler(results: nil, error: NSError(domain: "Getting total number of pages of Photos", code: 4, userInfo: [NSLocalizedDescriptionKey:"Unable to get total number of pages"]))
                 return
             }
-            print("TotalPictures are: \(totalPhotosInAlbum)")
             
             completionHandler(results: totalPhotosInAlbum, error: nil)
         }

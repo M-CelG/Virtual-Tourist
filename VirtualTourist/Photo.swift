@@ -31,7 +31,6 @@ class Photo: NSManagedObject {
     
     override func prepareForDeletion() {
         super.prepareForDeletion()
-        print("This Photo item is now Deinitialized")
         let filePath = pathForIdentifier(fileName)
         do {
             try NSFileManager.defaultManager().removeItemAtPath(filePath)
